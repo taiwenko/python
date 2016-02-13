@@ -1,0 +1,12 @@
+{
+  "capture_filename":"C:\temp_file",
+  "capture_samples":"10000",
+  "capture_duration":"1",
+
+  "active_analog_channels":"1",
+  "active_digital_channels":"1",
+  "digital_sample_rate":"100000000",
+  "analog_sample_rate":"12500000",
+
+  "usb_performance":"50"
+}
