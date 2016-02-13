@@ -1,0 +1,34 @@
+#!/bin/bash
+##
+## Target-side pre-submit tests.
+##
+## Flash the currently built executables onto the boards, and execute
+## the test suite.
+
+set -e
+set -x
+TOOLS=$(dirname $0)
+
+# Determine tray configuration based on OAR database
+eval $(${TOOLS}/../tests/config/find_tray_using_flags.py --sh)
+
+BOARDS="half_stack_hv_pfc apex_45 hv_acs upper_envelope_sensor_node"
+[ "$HAVE_GOPRO" = "yes" ] && BOARDS="$BOARDS gopro"
+[ "$HAVE_TRANSPONDER" = "gxpr" ] && BOARDS="$BOARDS gxpr_bridge"
+
+# Flash all boards to the current configuration.
+LOON_LAZY_JTAG_MODE=no ${TOOLS}/flash.py \
+  --parallel \
+  --board $BOARDS
+
+# The gxpr is flashed separately. It can not be flashed in parallel with
+# the gxpr_bridge, as putting the gxpr_bridge into reset will cycle
+# power to the gxpr.
+if [ "$HAVE_TRANSPONDER" = "gxpr" ]; then
+  LOON_LAZY_JTAG_MODE=no ${TOOLS}/flash.py \
+    --parallel \
+    --board gxpr
+fi
+
+# Run all tests.
+${TOOLS}/../tests/config/jenkins-release-qual

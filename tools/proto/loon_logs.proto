@@ -1,0 +1,46 @@
+// All timestamps are in milliseconds.
+
+syntax = "proto2";
+
+package googlex.daedalus.manufacturing.logs;
+
+message Unit {
+  optional string id = 1;
+}
+
+enum TestStatus {
+  TEST_PASSED = 1;
+  TEST_FAILED = 2;
+}
+
+message TestLogMessage {
+  optional string message = 1;
+  optional uint64 timestamp = 2;
+  optional float deadline = 3;
+}
+
+message Test {
+  optional string name = 1;
+  optional string description = 2;
+  optional TestStatus status = 3;
+  repeated TestLogMessage log = 4;
+  optional string exception_dump = 5;
+  optional uint64 start_timestamp = 6;
+  optional uint64 end_timestamp = 7;
+}
+
+message TestRunMetadata {
+  optional Unit unit = 1;
+  repeated string component = 2;
+  optional uint64 timestamp = 3;
+  optional string tested_by = 4;
+  optional string version = 5;
+}
+
+message TestRun {
+  // Per-run data encapsulated in a single message so tests can be streamed to
+  // a log file.
+  optional TestRunMetadata metadata = 1;
+  repeated Test test = 2;
+}
+
