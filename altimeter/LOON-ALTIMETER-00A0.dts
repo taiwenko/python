@@ -1,0 +1,145 @@
+/dts-v1/;
+/plugin/;
+/ {
+	compatible = "ti,beaglebone", "ti,beaglebone-black";
+	
+	part-number = "LOON-ALTIMETER";
+	version = "00A0";
+	
+	exclusive-use =
+		/* Pin Headers */
+		"P9.17",	/* spi0.cs */
+		"P9.18",	/* spi0.miso */
+		"P9.21",	/* spi0.mosi */
+		"P9.22",	/* spi0.sclk */
+		"P9.19",	/* i2c2.scl -- shared? */
+		"P9.20",	/* i2c2.sda -- shared? */
+		"P9.11",	/* sel0 */
+		"P9.13",	/* sel1 */
+		"P9.15",	/* sel2 */
+		"P9.12",	/* wp */
+		"P9.14",	/* drdyb */
+		"P9.16",	/* temp_ok */
+		/* MCU Peripherals */
+		"spi0",
+		"i2c2";
+
+	fragment@0 {
+		target = <&am33xx_pinmux>;
+		__overlay__ {
+			bb_spi0_pins: bb_spi0_pins {
+				pinctrl-single,pins = <
+					0x150 0x30	/* conf_spi0_sclk(0)  -- spi0_sclk */
+					0x154 0x00	/* conf_spi0_d0(0)    -- spi0_mosi */
+					0x158 0x20	/* conf_spi0_d1(0)    -- spi0_miso */
+					0x15C 0x10	/* conf_spi0_cs0(0)   -- spi0_cs0 */
+				>;
+			};
+			bb_i2c2_pins: bb_i2c2_pins {
+				pinctrl-single,pins = <
+					0x17C 0x03	/* conf_uart1_rtsn(3) -- i2c2_scl */
+					0x178 0x03	/* conf_uart1_ctsn(3) -- i2c2_sda */
+				>;
+			};
+			altimeter_pins: altimeter_pins {
+				pinctrl-single,pins = <
+					0x078 0x0f	/* conf_gpmc_ben1(7)  -- gpio1_28(60) -- wp */
+					0x048 0x27	/* conf_gpmc_a2(7)    -- gpio1_18(50) -- drdy */
+					0x04C 0x27	/* conf_gpmc_a3(7)    -- gpio1_19(51) -- temp */
+					0x070 0x0f	/* conf_gpmc_wait0(7) -- gpio0_30(30) -- sel0 */
+					0x074 0x0f	/* conf_gpmc_wpn(7)   -- gpio0_31(31) -- sel1 */
+					0x040 0x0f	/* conf_gpmc_a0(7)    -- gpio1_16(48) -- sel2 */
+				>;
+			};
+		};
+	};
+	
+	fragment@1 {
+		target = <&spi0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_spi0_pins>;
+			ti,pindir-d0-out-d1-in = <1>;
+			
+			spidev@0 {
+				compatible = "linux,spidev";
+				spi-max-frequency = <10000000>;
+				reg = <0>;
+			};
+		};
+	};
+	
+	fragment@2 {
+		target = <&i2c2>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_i2c2_pins>;
+
+			eeprom@50 {
+				compatible = "atmel,24c01";
+				reg = <0x50>;
+				pagesize = <8>;
+			};
+		};
+	};
+	
+	fragment@3 {
+		target = <&ocp>;
+		__overlay__ {
+			altimeter {
+				compatible = "gpio-of-helper";
+				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&altimeter_pins>;
+				
+				i2c2_wp {
+					gpio-name = "altimeter:wp";
+					gpio = <&gpio2 28 0>;
+					output;
+					init-high;
+				};
+				
+				temp_ok {
+					gpio-name = "altimeter:temp_ok";
+					gpio = <&gpio2 19 0>;
+					input;
+				};
+				
+				drdyb {
+					gpio-name = "altimeter:drdyb";
+					gpio = <&gpio2 18 0>;
+					input;
+				};
+				
+				sel0 {
+					gpio-name = "altimeter:sel0";
+					gpio = <&gpio1 30 0>;
+					output;
+					init-low;
+				};
+				
+				sel1 {
+					gpio-name = "altimeter:sel1";
+					gpio = <&gpio1 31 0>;
+					output;
+					init-low;
+				};
+				
+				sel2 {
+					gpio-name = "altimeter:sel2";
+					gpio = <&gpio2 16 0>;
+					output;
+					init-low;
+				};
+			};
+		};
+	};
+};

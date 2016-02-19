@@ -1,0 +1,24 @@
+Altitude Test Scripts
+=====================
+
+avionicscal.py
+--------------
+Test script to have the PPC4 drive a test vessel while reading the gxpr
+pressure sensor.
+
+gxpdr-vac-test.py
+-----------------
+Test script to repeatedly interrogate the GXPDR with the IFR 6000.
+
+ppc4test.py
+-----------
+Simple control script to have the PPC4 ramp the pressure up and down.
+
+read.cc
+-------
+BeagleBone executable to read an attached NPH-8-100AH sensor.
+
+transponder.py
+--------------
+Test script to have the PPC4 drive a test vessel while interrogating the
+GXPDR with the IFR 6000.
