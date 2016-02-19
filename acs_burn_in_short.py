@@ -1,19 +1,12 @@
 #!/usr/bin/env python
 
-## TO-DOs
-## Add logs report
-
 from time import sleep
 import twk_utils
 import math
 import sys
 import xpf6020
 import tools.utils as tools
-import watlowf4
 from tools import shell
-from blessings import Terminal
-
-t = Terminal()
 
 franz_num = raw_input('How many Franz are you testing? [1,2,3,or 4]: ').strip()
 
@@ -28,16 +21,6 @@ pfc1_path = '/dev/serial/by-id/usb-loon_onboard_half_stack_hv_pfc_1a-if01-port0'
 pfc2_path = '/dev/serial/by-id/usb-loon_onboard_half_stack_hv_pfc_2a-if01-port0'
 pfc3_path = '/dev/serial/by-id/usb-loon_onboard_half_stack_hv_pfc_1b-if01-port0'
 pfc4_path = '/dev/serial/by-id/usb-loon_onboard_half_stack_hv_pfc_2b-if01-port0'
-
-print "Accessing the Temperature Chamber"
-tchamber_path = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A603R0MG-if00-port0'
-chamber = watlowf4.WatlowF4(tchamber_path)
-chamber.conditioning_on(True)
-
-# Setup chamber
-cold_temp = 0
-print 'Ramping down to 0C'
-chamber.set_temp(cold_temp)
 
 batt_vin = 48
 batt_iin = 20
@@ -69,21 +52,20 @@ else:
     print 'Unknown franz amount. Can only test up to 4 franz at a time.'
     sys.exit()
 
-def ps_measure_check(ch, current_min, current_max, voltage_min, voltage_max, tolerance, max_cycle):
+def ps_measure_check(ch, current, voltage, tolerance, max_cycle):
   
   cycle = 0
   avg_volt = 0
   avg_current = 0
+  print 'Averaging %d measurement...' % max_cycle 
 
   while cycle != max_cycle:
     if ch == '1':
-      [r_mppt_v, r_mppt_i] = ps1.measure('1')
-    elif ch == '2':
-      [r_mppt_v, r_mppt_i] = ps1.measure('2')
-    elif ch == '3':
       [r_mppt_v, r_mppt_i] = ps2.measure('1')
-    elif ch == '4':
+    elif ch == '2':
       [r_mppt_v, r_mppt_i] = ps2.measure('2')
+    elif ch == '3':
+      [r_mppt_v, r_mppt_i] = ps1.measure('2')
     else:
       print 'Unknown Input Channel'
 
@@ -97,19 +79,27 @@ def ps_measure_check(ch, current_min, current_max, voltage_min, voltage_max, tol
   r_mppt_v = avg_volt / cycle;
   r_mppt_i = avg_current / cycle;
 
+  current_max = float(current) * (1 + tolerance)
+  current_min = float(current) * (1 - tolerance)
+  voltage_max = float(voltage) * (1 + tolerance)
+  voltage_min = float(voltage) * (1 - tolerance)
+
+  print 'Checking measurement...' 
+  print 'Input voltage should be within %f to %fV' %(voltage_min, voltage_max)
+  print 'Input current should be within %f to %fA' %(current_min, current_max)
+
   if float(r_mppt_i) > float(current_max):
-    result = t.bold_red('FAILED')
+    result = 'FAILED'
   elif float(r_mppt_i) < float(current_min):
-    result = t.bold_red('FAILED')
+    result = 'FAILED'
   elif float(r_mppt_v) > float(voltage_max):
-    result = t.bold_red('FAILED')
+    result = 'FAILED'
   elif float(r_mppt_v) < float(voltage_min):
-    result = t.bold_red('FAILED')
+    result = 'FAILED'
   else:
-    result = t.bold_green('PASSED')
+    result = 'PASSED'
   
-  print 'Franz CH%s @ %sV, %sA....[%s]' %(ch, r_mppt_v, r_mppt_i, result)
-  print ''
+  print 'MPPT Input%s %s @ %sV, %sA' %(ch, result, r_mppt_v, r_mppt_i)
 
 def config_acs(pfc_path):
   sleep(5)
@@ -182,22 +172,6 @@ def check_esc_temp(pfc_path):
   sleep(3)
   return float(current_esc_temp)
 
-# def sb_query(CH, pfc_path):
-#   tom = shell.Shell(pfc_path)
-#   sleep(1)
-#   sb = shell.Scoreboard(tom,'acs')
-#   sleep(3)
-#   esc_temp = str(sb.query('acs_temperature_fan_esc'))
-#   current_esc_temp = esc_temp.split("'")[3]
-#   print current_esc_temp
-#   acs_temp = str(sb.query('acs_temperature_top_0'))
-#   current_acs_temp = acs_temp.split("'")[3]
-#   print current_acs_temp
-#   tom.close()
-#   sleep(3)
-#   return float(current_esc_temp)
-
-
 def config_burnin(pfc_path, ontime):
   tom = shell.Shell(pfc_path)
   sleep(3)
@@ -206,38 +180,6 @@ def config_burnin(pfc_path, ontime):
   tom.close()
 
 # Test starts here
-
-#print "Accessing Major Tom"
-
-# tom = shell.Shell()
-# sb = shell.Scoreboard(tom, None)
-# sbvars = []
-# sbvars.append('acs_error')
-# sbvars.append('acs_state')
-# sbvars.append('power_acs_enabled')
-# sbvars.append('acs_fan_esc_power_state')
-# sbvars.append('acs_heater_setpoint_main')
-# sbvars.append('acs_heater_setpoint_fan_esc')
-# sbvars.append('acs_temperature_fan_esc')
-# sbvars.append('acs_temperature_top_0')
-
-# print "Preparing logfile"
-# ts = utils.get_timestamp()
-# logdir = '../acs-burnin-%s.csv' % ts
-# logfile = open(logdir, 'wt')
-# try:
-#     if logfile.tell() == 0:
-#         raise IOError, 'Null Error'
-# except IOError:
-#     logfile.write('TIMESTAMP,')
-#     for var in sbvars:
-#         logfile.write('"%s",' % var)
-#         logfile.write('CH,')
-#         logfile.write('VOLT,')
-#         logfile.write('CURRENT,')
-#     logfile.write('TIMESTAMP\n')
-#     logfile.flush()
-
 ts = utils.get_timestamp()
 print '*** Franz test started @ %s***' % ts
 
@@ -327,86 +269,40 @@ while True:
   else:
     print 'Unknown Channel'
 
-max_cycle = 15
-total_cycle = 0
-ontime = 15 # for 15 mins
-ontime_sec = ontime * 60
+
+ontime = 15
+sec = ontime*60
 offtime = 5
 offtime_sec = offtime * 60
+cycle = 0
 total_time = ontime * 2 + offtime
-run_count = 0
-max_run_count = 2
 
 ts = utils.get_timestamp()
 print '*** %s min burn-in started @ %s***' % (total_time, ts)
-print 'On for 15 min started @ %s' % (ts)
 
-while True:
+while cycle < 2:
 
-  config_burnin(pfc1_path, ontime_sec)
+  config_burnin(pfc1_path, sec)
   if franz_num == '2':
-    config_burnin(pfc2_path, ontime_sec)
+    config_burnin(pfc2_path, sec)
   elif franz_num == '3':
-    config_burnin(pfc2_path, ontime_sec)
-    config_burnin(pfc3_path, ontime_sec)
+    config_burnin(pfc2_path, sec)
+    config_burnin(pfc3_path, sec)
   elif franz_num == '4':
-    config_burnin(pfc2_path, ontime_sec)
-    config_burnin(pfc3_path, ontime_sec)
-    config_burnin(pfc4_path, ontime_sec)
+    config_burnin(pfc2_path, sec)
+    config_burnin(pfc3_path, sec)
+    config_burnin(pfc4_path, sec)
   else:
     if franz_num != '1':
       print 'Unknown Channel'
-  
-  measurement_count = 5
-  print 'Averaging %d measurement...' % measurement_count
-  
-  current = 3.4
-  voltage = 48
-  tolerance = 0.3
-  current_max = float(current) * (1 + tolerance)
-  current_min = float(current) * (1 - tolerance)
-  voltage_max = float(voltage) * (1 + tolerance)
-  voltage_min = float(voltage) * (1 - tolerance)
 
-  print 'Voltage Limits should be within %f to %fV' %(voltage_min, voltage_max)
-  print 'Current Limits should be within %f to %fA' %(current_min, current_max)
-  print ''
+  sec = sec + 20
+  sleep(sec)
 
-  # On for 15 min, while total  
-  while total_cycle < max_cycle:
-    ps_measure_check('1', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-    if franz_num == '2':
-      ps_measure_check('2', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-    elif franz_num == '3':
-      ps_measure_check('2', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-      ps_measure_check('3', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-    elif franz_num == '4':
-      ps_measure_check('2', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-      ps_measure_check('3', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-      ps_measure_check('4', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
-    else:
-      if franz_num != '1':
-        print 'Unknown franz amount.'
-    sleep(40) # check ps at every min (40+20 for checking) for 15 cycles
-    total_cycle = total_cycle + 1
-    ts = utils.get_timestamp()
-    print 'Check %s/%s completed @ %s***' % (total_cycle, max_cycle, ts)
-    print ''
+  if cycle == 0:
+    sleep(offtime_sec)
 
-  total_cycle = 0
-
-  run_count = run_count + 1
-  if run_count == max_run_count:
-    break;
-
-  ts = utils.get_timestamp()
-  print 'Off for 5 min started @ %s' % ts
-  sleep(offtime_sec)
-  ts = utils.get_timestamp()
-  print 'On for 15 min started @ %s' % ts
-  hot_temp = 24
-  print 'Ramping up to 24C'
-  chamber.set_temp(hot_temp)
+  cycle = cycle + 1
 
 ts = utils.get_timestamp()
 print '*** Franz test completed @ %s***' % ts

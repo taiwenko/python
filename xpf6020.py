@@ -1,6 +1,7 @@
-##!/usr/bin/python
+#!/usr/bin/python
 
-# python driver for the Sorensen XPF 60-20DP
+# Copyright 2014 Google, Inc.
+# Routines for talking to the Sorensen XPF 60-20DP
 # Author: TaiWen Ko
 # Requires serial library
 
@@ -22,7 +23,7 @@ class Xpf6020(object):
     def _read(self, timeout):
         self.serial.timeout = timeout
         value = self.serial.readline()
-	if len(value) == 0 or value[-1] != '\n':
+        if len(value) == 0 or value[-1] != '\n':
             raise IOError, 'Read Timeout'
         return value.strip()
 
@@ -30,9 +31,11 @@ class Xpf6020(object):
         self._write(message)
         return self._read(timeout)
 
-    def measure(self):
-        value = self._query('READ?1')
-        return float(value)
+    def measure(self, ch):
+        current = self._query('I%sO?' % ch)
+        voltage = self._query('V%sO?' % ch)
+        #return float(voltage,current)
+        return [str(voltage),str(current)]
 
     def set_voltage(self, ch, volt):
         self._write('V' + str(ch) + ' ' + str(volt)) 
@@ -50,28 +53,26 @@ class Xpf6020(object):
         if switch == 'off':
 	    self._write('OP' + str(ch) + ' 0')
             time.sleep(0.1) # Allow controller to catch up
-            print 'Power Supply Ch' + str(ch) + ' is off.'
+            print 'XPF6020 Power Supply Ch' + str(ch) + ' is off.'
         elif switch == 'on':
             self._write('OP' + str(ch) + ' 1')
             time.sleep(0.1) # Allow controller to catch up
-            print 'Power Supply Ch' + str(ch) + ' is on!'
+            print 'XPF6020 Power Supply Ch' + str(ch) + ' is on!'
 
     def all_output(self, switch):
         if switch == 'off':
 	    self._write('OPALL 0')
             time.sleep(0.1) # Allow controller to catch up
-            print 'Power supply channels are off.'
+            print 'XPF6020 Power supply channels are off.'
         elif switch == 'on':
             self._write('OPALL 1')
             time.sleep(0.1) # Allow controller to catch up
-            print 'Power supply channels are on!'
+            print 'XPF6020 Power supply channels are on!'
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     
-#    a = Xpf6020('/dev/ttyUSB1')
-#    a.reset_ps()
-#    a.set_voltage(1,20)
-#    a.set_voltage(2,20)
-#    a.set_currentlimit(1,2)
-#    a.set_currentlimit(2,2)
-#    a.all_output('off')
+    # Parameters
+    ps = Xpf6020('/dev/ttyUSB1')
+    ps.reset_ps()
+    print ps.measure('1')
+    print ps.measure('2')

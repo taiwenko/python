@@ -16,6 +16,7 @@ from blessings import Terminal
 t = Terminal()
 
 franz_num = raw_input('How many Franz are you testing? [1,2,3,or 4]: ').strip()
+cycle_num = raw_input('How many temp cycles would you like to run?: ').strip()
 
 utils = twk_utils.Twk_utils()
 
@@ -35,9 +36,10 @@ chamber = watlowf4.WatlowF4(tchamber_path)
 chamber.conditioning_on(True)
 
 # Setup chamber
-cold_temp = 0
-print 'Ramping down to 0C'
-chamber.set_temp(cold_temp)
+cold_temp = 10 #-60
+soak_time = 1 #45 # min
+chamber.ramp_down(cold_temp)
+chamber.soak_time(soak_time)
 
 batt_vin = 48
 batt_iin = 20
@@ -51,10 +53,10 @@ ps1.set_voltage(1, batt_vin)
 ps1.set_currentlimit(1, batt_iin)
 if franz_num == '2':
   ps1.set_voltage(2, batt_vin)
-  ps1.set_currentlimit(2, batt_iin)  
+  ps1.set_currentlimit(2, batt_iin)
 elif franz_num == '3':
   ps1.set_voltage(2, batt_vin)
-  ps1.set_currentlimit(2, batt_iin)  
+  ps1.set_currentlimit(2, batt_iin)
   ps2.set_voltage(1,batt_vin)
   ps2.set_currentlimit(1,batt_iin)
 elif franz_num == '4':
@@ -70,7 +72,7 @@ else:
     sys.exit()
 
 def ps_measure_check(ch, current_min, current_max, voltage_min, voltage_max, tolerance, max_cycle):
-  
+
   cycle = 0
   avg_volt = 0
   avg_current = 0
@@ -107,7 +109,7 @@ def ps_measure_check(ch, current_min, current_max, voltage_min, voltage_max, tol
     result = t.bold_red('FAILED')
   else:
     result = t.bold_green('PASSED')
-  
+
   print 'Franz CH%s @ %sV, %sA....[%s]' %(ch, r_mppt_v, r_mppt_i, result)
   print ''
 
@@ -117,18 +119,18 @@ def config_acs(pfc_path):
   sleep(1)
   sb = shell.Scoreboard(tom,'acs')
   sleep(1)
-  tom.sendline('power on acs') 
+  tom.sendline('power on acs')
   sleep(3)
   print sb.query('power_acs_enabled')
   sleep(1)
-  tom.sendline('acs esc on') 
+  tom.sendline('acs esc on')
   sleep(5)
   esc_state = str(sb.query('acs_fan_esc_power_state'))
   current_esc_state = esc_state.split("'")[3]
   sleep(3)
 
   while current_esc_state != 'On':
-    tom.sendline('acs esc on') 
+    tom.sendline('acs esc on')
     sleep(6)
     esc_state = str(sb.query('acs_fan_esc_power_state'))
     current_esc_state = esc_state.split("'")[3]
@@ -147,7 +149,7 @@ def config_acs_setpoint(pfc_path, esc_setpoint):
   tom = shell.Shell(pfc_path)
   sleep(1)
   sb = shell.Scoreboard(tom,'acs')
-  tom.sendline('heater set acs.main %s' % esc_setpoint) 
+  tom.sendline('heater set acs.main %s' % esc_setpoint)
   sleep(3)
   acs_sp = str(sb.query('acs_heater_setpoint_main'))
   current_acs_sp = acs_sp.split("'")[3]
@@ -158,9 +160,9 @@ def config_esc_setpoint(pfc_path, esc_setpoint):
   tom = shell.Shell(pfc_path)
   sleep(1)
   sb = shell.Scoreboard(tom,'acs')
-  tom.sendline('heater set acs.esc.on %s' % esc_setpoint) 
+  tom.sendline('heater set acs.esc.on %s' % esc_setpoint)
   sleep(3)
-  tom.sendline('acs esc_activation_temperature %s' % esc_setpoint) 
+  tom.sendline('acs esc_activation_temperature %s' % esc_setpoint)
   sleep(3)
   esc_sp = str(sb.query('acs_heater_setpoint_fan_esc'))
   current_esc_sp = esc_sp.split("'")[3]
@@ -201,7 +203,7 @@ def check_esc_temp(pfc_path):
 def config_burnin(pfc_path, ontime):
   tom = shell.Shell(pfc_path)
   sleep(3)
-  tom.sendline('acs descend 0 %s 100 150' % ontime ) 
+  tom.sendline('acs descend 0 %s 100 150' % ontime )
   sleep(3)
   tom.close()
 
@@ -356,10 +358,10 @@ while True:
   else:
     if franz_num != '1':
       print 'Unknown Channel'
-  
+
   measurement_count = 5
   print 'Averaging %d measurement...' % measurement_count
-  
+
   current = 3.4
   voltage = 48
   tolerance = 0.3
@@ -372,8 +374,8 @@ while True:
   print 'Current Limits should be within %f to %fA' %(current_min, current_max)
   print ''
 
-  # On for 15 min, while total  
-  while total_cycle < max_cycle:
+  # On for 15 min, while total
+  while total_cycle < cycle_num:
     ps_measure_check('1', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)
     if franz_num == '2':
       ps_measure_check('2', current_min, current_max, voltage_min, voltage_max, tolerance, measurement_count)

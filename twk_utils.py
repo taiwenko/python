@@ -7,7 +7,7 @@ SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 
 SENDER = 'ironsnail2000@gmail.com'
-RECIPIENT = ['twk@google.com', 'haeileen@google.com']
+RECIPIENT = ['twk@google.com', 'aihua@google.com']
 
 class Twk_utils(object):
 
