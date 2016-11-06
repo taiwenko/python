@@ -1,8 +1,5 @@
 #!/usr/bin/python
-
-# Copyright 2014 Google, Inc.
 # Routines for talking to the Sorensen XPF 60-20DP
-# Author: TaiWen Ko
 # Requires serial library
 
 import serial
